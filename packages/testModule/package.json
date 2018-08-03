@@ -1,6 +1,6 @@
 {
   "name": "testModule",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,5 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "gitHead": "c49074c384b851299bfc4e6c5c3311fe72163bd3"
+  "gitHead": "d460e63e2e8dbd6ef487c8fdc3b2f88300b059c0"
 }
