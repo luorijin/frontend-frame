@@ -1,6 +1,6 @@
 {
-  "name": "Moduleluo1029",
-  "version": "1.0.5",
+  "name": "luorimodusss",
+  "version": "1.0.6",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,5 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "gitHead": "4fd0103c2dfda6732091b2827c6582b8e5c0e207"
+  "gitHead": "dcaa5900a02d1b5fef285574d96957c0a348f03f"
 }
