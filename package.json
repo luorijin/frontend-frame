@@ -4,7 +4,9 @@
   "description": "一个功能库",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "rollup -c -w",
+    "build:umd": "lerna exec -- rollup -c --environment TARGET:umd",
+    "build:es": "lerna exec -- rollup -c"
   },
   "repository": {
     "type": "git",
