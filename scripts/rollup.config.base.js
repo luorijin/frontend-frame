@@ -16,7 +16,9 @@ const target = process.env.TARGET
 export const plugins=[
     nodeResolve(),
     babel({
-        exclude: '**/node_modules/**'
+        exclude: '**/node_modules/**',
+        babelrc: false,
+        presets: [ "es2015-rollup" ]
     }),
     replace({
         'process.env.NODE_ENV': JSON.stringify(env)
