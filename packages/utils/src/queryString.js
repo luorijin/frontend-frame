@@ -9,7 +9,7 @@ export function parse(query){
     }
     return abj;
 }
-export function parseUrl(href,options){
+export function parseUrl(href){
   let location = href.split('?');
   return {
       url:location[0]||'',
