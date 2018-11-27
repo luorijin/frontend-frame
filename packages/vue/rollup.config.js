@@ -13,7 +13,7 @@ const config = {
     {
       file:'demo/vue.js',
       format: 'umd',
-      name:"utils",
+      name:"Vue",
       banner,
       globals: {
       }
