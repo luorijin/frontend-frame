@@ -1,78 +1,113 @@
 import watcher from './watcher';
 import Observer from './Observer';
-export default class compile {
-    constructor(el, data) {
-        this.$el = document.querySelector(el);
-        this.data = data;
+import repeat from './for';
+import vIf from './if';
+import dom from './dom';
+import parseText from './parse'
+export default class compile extends dom{
+    constructor(vm) {
+        super();
+        this.$el = vm.$el;
+        this.data = vm.data;
+        this.vm = vm;
         this.updateFn = {
             expressGet(path) {
-                path = path.split('.');
-                let boby = 'if (o !=null';
-                let pathString = 'o';
-                let key;
-                for (let i = 0; i < path.length - 1; i++) {
-                    key = path[i];
-                    pathString += `.${key}`;
-                    boby += ` && ${pathString} != null`;
-                }
-                key = path[path.length - 1];
-                pathString += `.${key}`;
-                boby += `) return ${pathString}`;
-                return new Function('o', boby);
+                let body = [];
+                this.getVar(path).forEach(name => {
+                    body.push(`let ${name} = data.${name};`)
+                });
+                body.push(` return ${path};`)
+                return new Function("data",body.join(''));
+            },
+            getVar(code){
+                var REMOVE_RE = /\/\*[\w\W]*?\*\/|\/\/[^\n]*\n|\/\/[^\n]*$|"(?:[^"\\]|\\[\w\W])*"|'(?:[^'\\]|\\[\w\W])*'|\s*\.\s*[$\w\.]+/g;
+                var SPLIT_RE = /[^\w$]+/g;
+                var NUMBER_RE = /^\d[^,]*|,\d[^,]*/g;
+                var BOUNDARY_RE = /^,+|,+$/g;
+                var SPLIT2_RE = /^$|,+/;
+                return code
+                .replace(REMOVE_RE, '')
+                .replace(SPLIT_RE, ',')
+                .replace(NUMBER_RE, '')
+                .replace(BOUNDARY_RE, '')
+                .split(SPLIT2_RE);
+        
             },
             setVal(data, exp, newVal) {
-                exp = exp.split(".");
-                return exp.reduce((prev, next, currentIndex) => {
-                    // 如果当前归并的为数组的最后一项，则将新值设置到该属性
-                    if(currentIndex === exp.length - 1) {
-                        return prev[next] = newVal
-                    }
-            
-                    // 继续归并
-                    return prev[next];
-                }, data);
+                
+                new Function("data",`data.${exp} ='${newVal}';return true`)(data);
             },
-            getval(data, expr) {
+            getval(expr) {
                 let get = this.expressGet(expr);
-                return get(data);
+                return get(vm.data);
             },
-            text(node, value) {
+            setText(node, value){
                 node.textContent = value;
             },
-            model(node, value,modelbind) {
+            text(node, expr) {
+                this.setText(node,this.getval(expr));
+                new watcher(vm, expr, (newVal) => {
+                    this.setText(node,newVal);
+                })
+            },
+            setModel(node, value){
                 node.value = value;
-                if(modelbind){
-                    node.addEventListener('input', e => {
-                        // 获取输入的新值
-                        let newValue = e.target.value;
-                
-                        // 更新到节点
-                        this.setVal(modelbind.data, modelbind.expr, newValue);
-                    });
-                }
+            },
+            model(node, expr) {
+                this.setModel(node,this.getval(expr));
+                node.addEventListener('input', e => {
+                    // 获取输入的新值
+                    let newValue = e.target.value;
+            
+                    // 更新到节点
+                    this.setVal(vm.data, expr, newValue);
+                });
+                new watcher(vm, expr, (newVal) => {
+                    this.setModel(node,newVal);
+                })
+            },
+            for(node,expr){
+                console.log(new repeat(node,expr,vm));
+            },
+            if(node,expr){
+                new vIf(node,expr,vm)
             }
         }
-        new Observer(this.data);
-        let fragment = this.node2fragment();
+        if(vm.scopeType!=="parent"){
+            new Observer(this.data);
+        }
+        let iSappend = vm.iSappend;//是否append到跟元素
+        let fragment = vm.fragment= this.node2fragment(iSappend);
         this.compile(fragment);
-        this.$el.appendChild(fragment);
+        if(iSappend){
+            this.$el.appendChild(fragment);
+        }
     }
-    node2fragment() {
+    node2fragment(iSappend) {
         let fragment = document.createDocumentFragment();
-        let child;
-        while (child = this.$el.firstChild) {
-            fragment.appendChild(child);
+        if(iSappend){
+            let child;
+            while (child = this.$el.firstChild) {
+                fragment.appendChild(child);
+            }
+        }else{
+            fragment.append(this.$el);
         }
         return fragment;
     }
     compile(fragment) {
         let childNodes = fragment.childNodes;
         Array.from(childNodes).forEach(node => {
-            if (this.isElementNode(node)) {
+            let nodeType=this.isElementNode(node);
+            if (nodeType===1) {
                 this.compileElement(node)
-                this.compile(node);
-            } else {
+                if(!node.childCompile){
+                    this.compile(node);
+                }
+            } else if(nodeType===3){
                 this.compileText(node, this.data);
+            }else{
+                return false;
             }
         });
     }
@@ -80,7 +115,7 @@ export default class compile {
         return name.startsWith("v-");
     }
     isElementNode(node) { // 判断是否为元素及节点，用于递归遍历节点条件
-        return node.nodeType === 1;
+        return node.nodeType;
     }
     compileElement(node) {
         let attrs = node.attributes;
@@ -89,24 +124,31 @@ export default class compile {
             if (this.isDirective(attrName)) {
                 let expr = attr.value;
                 let [, type] = attrName.split("-");
-                let value = this.updateFn.getval(this.data, expr);
-                this.updateFn[type](node, value,{data:this.data,expr});
-                new watcher(this, expr, (newVal) => {
-                    this.updateFn[type](node, newVal);
-                })
+                if(type=="else") return;
+                this.updateFn[type](node, expr);
+                
             }
         })
     }
-    compileText(node, data) {
+    compileText(node) {
         let expr = node.textContent; //取文本中的内容
-        let reg = /\{\{([^}]+)\}\}/g;
-        let val = expr.replace(reg, (...args) => {
-            expr=args[1];
-            new watcher(this, args[1], (newVal) => {
-                this.updateFn.text(node, newVal);
-            })
-            return this.updateFn.getval(data, args[1]);
-        })
-        this.updateFn.text(node, val);
+        var tokens = parseText(expr);
+        if(tokens){
+            tokens.forEach((token) => {
+                if (token.tag) {
+                    // 指令节点
+                    let value = token.value;
+                    let el = document.createTextNode('');
+                    this.before(el, node);
+                    this.updateFn.text(el,value);
+                } else {
+                    // 普通文本节点
+                    console.log(token.value);
+                    let el = document.createTextNode(token.value);
+                    this.before(el, node);
+                }
+            });
+            this.remove(node);
+        }
     }
 }

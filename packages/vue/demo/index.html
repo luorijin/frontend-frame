@@ -11,21 +11,36 @@
 <body>
     <div id="app">
         <!-- 双向数据绑定 靠的是表单 -->
-        <input type="text" v-model="message">
-        <div>{{message}}</div>
-        <ul>
-            <li>{{message}}</li>
-        </ul>
-        {{message}}
+        <input type="text" v-model="my[0].name">
+        <div>{{luo.n==2?"我是2":(mm.m)}}</div>
+        <div v-if="luo.n==1 && show">{{mm.m}}{{message}}</div>
+        <div v-else-if="luo.n==2">
+            <div v-for="item in my">{{item.name}}</div>
+        </div>
+        <div v-else>
+            我是其他
+        </div>
     </div>
     <script src="./vue.js"></script>
     <script>
         let vm = new Vue({
             el: '#app',
             data: {
-                message: 'hello world!'
+                show:false,
+                message: 'hello world!',
+                mm:{
+                    m:"你好"
+                },
+                luo:{
+                    n:1
+                },
+                my:[{name:"我是谁",id:"111"},{name:"哈哈",id:"2222"}]
             }
         });
+        setTimeout(function(){
+            vm.data.luo.n=2;
+            console.log("进入")
+        },3000);
     </script>
 </body>
 
