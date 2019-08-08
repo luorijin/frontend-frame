@@ -13,7 +13,7 @@
         <!-- 双向数据绑定 靠的是表单 -->
         <input type="text" v-model="my[0].name">
         <div>{{luo.n==2?"我是2":(mm.m)}}</div>
-        <div v-if="luo.n==1 && show">{{mm.m}}{{message}}</div>
+        <div v-if="luo.n==1 && show">{{mm.p.o}}{{message}}</div>
         <div v-else-if="luo.n==2">
             <div v-for="item in my">{{item.name}}</div>
         </div>
@@ -26,10 +26,13 @@
         let vm = new Vue({
             el: '#app',
             data: {
-                show:false,
+                show:true,
                 message: 'hello world!',
                 mm:{
-                    m:"你好"
+                    m:"你好",
+                    p:{
+                        o:"三层"
+                    }
                 },
                 luo:{
                     n:1
@@ -38,7 +41,9 @@
             }
         });
         setTimeout(function(){
-            vm.data.luo.n=2;
+            vm.data.mm.p={
+                        o:"变化三层---"
+                    };
             console.log("进入")
         },3000);
     </script>
