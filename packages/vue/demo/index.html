@@ -10,6 +10,7 @@
 
 <body>
     <div id="app">
+        <hello tip="我是消息" :name="props.name"></hello>
         <!-- 双向数据绑定 靠的是表单 -->
         <input type="text" v-model="my[0].name">
         <div>{{luo.n==2?"我是2":(mm.m)}}</div>
@@ -23,10 +24,18 @@
     </div>
     <script src="./vue.js"></script>
     <script>
+        let hello = Vue.extend({
+            template:'<div><div>{{tip}}</div><div class="eee">{{name}}</div></div>',
+            props:['tip','name']
+        })
+        Vue.components("hello",hello);
         let vm = new Vue({
             el: '#app',
             data: {
                 show:true,
+                props:{
+                    name:"我是动态props"
+                },
                 message: 'hello world!',
                 mm:{
                     m:"你好",
@@ -41,10 +50,10 @@
             }
         });
         setTimeout(function(){
+            vm.data.props.name="动态props开始变化";
             vm.data.mm.p={
                         o:"变化三层---"
                     };
-            console.log("进入")
         },3000);
     </script>
 </body>

@@ -7,8 +7,8 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
-  (global.Vue = factory());
-}(this, (function () { 'use strict';
+  (global = global || self, global.Vue = factory());
+}(this, function () { 'use strict';
 
   function def(obj, key, val, enumerable) {
     Object.defineProperty(obj, key, {
@@ -212,11 +212,11 @@
               Object.defineProperty(obj, key, {
                   enumerable: true,
                   configurable: true,
-                  get: function get$$1() {
+                  get: function get() {
                       Dep.target && dep.addSub(Dep.target);
                       return value;
                   },
-                  set: function set$$1(newValue) {
+                  set: function set(newValue) {
                       if (newValue !== value) {
                           that.observer(newValue); // 如果是对象继续劫持
                           value = newValue;
@@ -286,7 +286,7 @@
 
       createClass(watcher, [{
           key: 'get',
-          value: function get$$1() {
+          value: function get() {
               Dep.target = this;
               var value = this.getter.call(this, this.vm.data);
               Dep.target = null;
@@ -622,8 +622,8 @@
                   new Function("data", 'data.' + exp + ' =\'' + newVal + '\';return true')(data);
               },
               getval: function getval(expr) {
-                  var get$$1 = this.expressGet(expr);
-                  return get$$1(vm.data);
+                  var get = this.expressGet(expr);
+                  return get(vm.data);
               },
               setText: function setText(node, value) {
                   node.textContent = value;
@@ -661,6 +661,20 @@
                   new vIf(node, expr, vm);
               }
           };
+          //数据劫持前 props处理
+          if (vm.props) {
+              vm.props.forEach(function (prop) {
+                  if (prop.dynamic) {
+                      var get = _this.updateFn.expressGet(prop.expression);
+                      vm.data[prop.name] = get(vm.opt.parent.data);
+                      new watcher(vm.opt.parent, prop.expression, function (newVal) {
+                          vm.data[prop.name] = newVal;
+                      });
+                  } else {
+                      vm.data[prop.name] = prop.expression;
+                  }
+              });
+          }
           if (vm.scopeType !== "parent") {
               new Observer(_this.data);
           }
@@ -723,6 +737,17 @@
           value: function compileElement(node) {
               var _this5 = this;
 
+              var tagName = node.tagName.toLowerCase();
+              if (this.vm.childrens[tagName]) {
+                  var component = new this.vm.childrens[tagName]({
+                      el: node,
+                      parent: this.vm,
+                      isComponent: true,
+                      iSappend: false
+                  });
+                  this.repalce(node, component.fragment);
+                  return;
+              }
               var attrs = node.attributes;
               Array.from(attrs).forEach(function (attr) {
                   var attrName = attr.name;
@@ -767,31 +792,67 @@
       return compile;
   }(dom);
 
+  function tpToDom(template) {
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(template, 'text/html');
+      // 此处生成的doc是一个包含html和body标签的HTMLDocument
+      // 想要的DOM结构被包在body标签里面
+      // 所以需要进去body标签找出来
+      return doc.querySelector('body').firstChild;
+  }
   var Vue = function () {
       function Vue(options) {
           classCallCheck(this, Vue);
 
           var opt = {
               el: "#app",
-              data: [],
+              template: null,
+              data: {},
               iSappend: true
           };
-          this.extend(opt, options);
-          this.$el = typeof opt.el === 'string' ? document.querySelector(opt.el) : opt.el;
-          this.data = opt.data;
-          this.iSappend = opt.iSappend;
+          this.opt = Object.assign({}, opt, options);
+          if (this.opt.template) {
+              this.$el = tpToDom(this.opt.template);
+          } else {
+              this.$el = typeof this.opt.el === 'string' ? document.querySelector(this.opt.el) : this.opt.el;
+          }
+          this.data = this.opt.data;
+          this.childrens = Vue.childrens;
+          this.iSappend = this.opt.iSappend;
           this._watchers = [];
           if (this.$el) {
+              this.initProps();
               new compile(this);
           }
       }
 
       createClass(Vue, [{
-          key: 'extend',
-          value: function extend(to, from) {
-              for (var key in from) {
-                  to[key] = from[key];
-              }
+          key: 'compileProps',
+          value: function compileProps(node, propOptions) {
+              var props = [];
+              propOptions.forEach(function (name) {
+                  var prop = {};
+                  prop.name = name;
+                  var expression = void 0;
+                  if (expression = node.getAttribute(':' + name)) {
+                      prop.dynamic = true;
+                      prop.expression = expression;
+                  } else if (expression = node.getAttribute('' + name)) {
+                      prop.dynamic = false;
+                      prop.expression = expression;
+                  }
+                  props.push(prop);
+              });
+              return props;
+          }
+      }, {
+          key: 'initProps',
+          value: function initProps() {
+              if (!this.opt.isComponent) return;
+              var el = this.opt.el;
+              if (!this.opt.props) return;
+              var props = this.compileProps(el, this.opt.props);
+              this.props = props;
           }
       }, {
           key: 'distory',
@@ -806,6 +867,20 @@
       return Vue;
   }();
 
+  Vue.childrens = [];
+  Vue.extend = function (extendOptions) {
+      var Super = this;
+      var Sub = function vueComponent(options) {
+          Vue.call(this, Object.assign({}, extendOptions, options));
+      };
+      Sub.prototype = Object.create(Super.prototype);
+      Sub.prototype.constructor = Sub;
+      return Sub;
+  };
+  Vue.components = function (id, definition) {
+      this.childrens[id] = definition;
+  };
+
   return Vue;
 
-})));
+}));

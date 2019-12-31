@@ -73,6 +73,20 @@ export default class compile extends dom{
                 new vIf(node,expr,vm)
             }
         }
+        //数据劫持前 props处理
+        if(vm.props){
+            vm.props.forEach((prop)=>{
+                if(prop.dynamic){
+                    let get = this.updateFn.expressGet(prop.expression);
+                    vm.data[prop.name] = get(vm.opt.parent.data);
+                    new watcher(vm.opt.parent, prop.expression, (newVal) => {
+                       vm.data[prop.name] = newVal;
+                    })
+                }else{
+                    vm.data[prop.name] = prop.expression;
+                }
+            })
+        }
         if(vm.scopeType!=="parent"){
             new Observer(this.data);
         }
@@ -118,6 +132,17 @@ export default class compile extends dom{
         return node.nodeType;
     }
     compileElement(node) {
+        let tagName = node.tagName.toLowerCase();
+        if(this.vm.childrens[tagName]){
+           let component = new this.vm.childrens[tagName]({
+                el:node,
+                parent: this.vm,
+                isComponent: true,
+                iSappend:false
+           })
+           this.repalce(node,component.fragment)
+           return;
+        }
         let attrs = node.attributes;
         Array.from(attrs).forEach((attr) => {
             let attrName = attr.name;
